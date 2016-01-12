@@ -4,15 +4,16 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNet.Authentication;
+using Microsoft.AspNet.Authentication.OpenIdConnect;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
-using Microsoft.Extensions.WebEncoders;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 
-namespace Microsoft.AspNet.Authentication.OpenIdConnect
+namespace Microsoft.AspNet.Builder
 {
     /// <summary>
     /// Configuration options for <see cref="OpenIdConnectOptions"/>
@@ -189,12 +190,5 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
         /// This is disabled by default.
         /// </summary>
         public bool UseTokenLifetime { get; set; }
-
-        /// <summary>
-        /// Defines whether access and refresh tokens should be stored in the
-        /// <see cref="ClaimsPrincipal"/> after a successful authentication.
-        /// You can set this property to <c>false</c> to reduce the size of the final authentication cookie.
-        /// </summary>
-        public bool SaveTokensAsClaims { get; set; } = true;
     }
 }

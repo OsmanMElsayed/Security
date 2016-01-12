@@ -7,8 +7,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Authentication.OAuth;
+using Microsoft.AspNet.Builder;
+using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.WebUtilities;
 using Newtonsoft.Json.Linq;
 
@@ -31,12 +32,9 @@ namespace Microsoft.AspNet.Authentication.Google
             response.EnsureSuccessStatusCode();
 
             var payload = JObject.Parse(await response.Content.ReadAsStringAsync());
-            
-            var context = new OAuthCreatingTicketContext(Context, Options, Backchannel, tokens, payload)
-            {
-                Properties = properties,
-                Principal = new ClaimsPrincipal(identity)
-            };
+
+            var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, Options.AuthenticationScheme);
+            var context = new OAuthCreatingTicketContext(ticket, Context, Options, Backchannel, tokens, payload);
 
             var identifier = GoogleHelper.GetId(payload);
             if (!string.IsNullOrEmpty(identifier))
@@ -76,7 +74,7 @@ namespace Microsoft.AspNet.Authentication.Google
 
             await Options.Events.CreatingTicket(context);
 
-            return new AuthenticationTicket(context.Principal, context.Properties, context.Options.AuthenticationScheme);
+            return context.Ticket;
         }
 
         // TODO: Abstract this properties override pattern into the base class?

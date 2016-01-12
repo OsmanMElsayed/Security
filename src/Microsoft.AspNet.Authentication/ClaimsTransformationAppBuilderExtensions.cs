@@ -5,6 +5,7 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Authentication;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNet.Builder
 {
@@ -17,11 +18,15 @@ namespace Microsoft.AspNet.Builder
         /// Adds the <see cref="ClaimsTransformationMiddleware"/> middleware to the specified <see cref="IApplicationBuilder"/>, which enables claims transformation capabilities.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/> to add the middleware to.</param>
-        /// <param name="options">A <see cref="ClaimsTransformationOptions"/> that specifies options for the middleware.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
-        public static IApplicationBuilder UseClaimsTransformation(this IApplicationBuilder app, ClaimsTransformationOptions options)
+        public static IApplicationBuilder UseClaimsTransformation(this IApplicationBuilder app)
         {
-            return app.UseMiddleware<ClaimsTransformationMiddleware>(options);
+            if (app == null)
+            {
+                throw new ArgumentNullException(nameof(app));
+            }
+
+            return app.UseMiddleware<ClaimsTransformationMiddleware>();
         }
 
         /// <summary>
@@ -32,28 +37,39 @@ namespace Microsoft.AspNet.Builder
         /// <returns>A reference to this instance after the operation has completed.</returns>
         public static IApplicationBuilder UseClaimsTransformation(this IApplicationBuilder app, Func<ClaimsPrincipal, Task<ClaimsPrincipal>> transform)
         {
-            var options = new ClaimsTransformationOptions();
-            options.Transformer = new ClaimsTransformer
+            if (app == null)
             {
-                OnTransform = transform
-            };
-            return app.UseClaimsTransformation(options);
-        }
+                throw new ArgumentNullException(nameof(app));
+            }
+            if (transform == null)
+            {
+                throw new ArgumentNullException(nameof(transform));
+            }
 
+            return app.UseClaimsTransformation(new ClaimsTransformationOptions 
+            {
+                Transformer = new ClaimsTransformer { OnTransform = transform }
+            });
+        }
+        
         /// <summary>
         /// Adds the <see cref="ClaimsTransformationMiddleware"/> middleware to the specified <see cref="IApplicationBuilder"/>, which enables claims transformation capabilities.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/> to add the middleware to.</param>
-        /// <param name="configureOptions">An action delegate to configure the provided <see cref="ClaimsTransformationOptions"/>.</param>
+        /// <param name="options">The <see cref="ClaimsTransformationOptions"/> to configure the middleware with.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
-        public static IApplicationBuilder UseClaimsTransformation(this IApplicationBuilder app, Action<ClaimsTransformationOptions> configureOptions)
+        public static IApplicationBuilder UseClaimsTransformation(this IApplicationBuilder app, ClaimsTransformationOptions options)
         {
-            var options = new ClaimsTransformationOptions();
-            if (configureOptions != null)
+            if (app == null)
             {
-                configureOptions(options);
+                throw new ArgumentNullException(nameof(app));
             }
-            return app.UseClaimsTransformation(options);
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            return app.UseMiddleware<ClaimsTransformationMiddleware>(Options.Create(options));
         }
     }
 }

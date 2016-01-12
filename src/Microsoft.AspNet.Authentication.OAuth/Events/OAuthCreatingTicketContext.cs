@@ -5,8 +5,8 @@ using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Security.Claims;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
-using Microsoft.AspNet.Http.Authentication;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.AspNet.Authentication.OAuth
@@ -19,28 +19,32 @@ namespace Microsoft.AspNet.Authentication.OAuth
         /// <summary>
         /// Initializes a new <see cref="OAuthCreatingTicketContext"/>.
         /// </summary>
+        /// <param name="ticket">The <see cref="AuthenticationTicket"/>.</param>
         /// <param name="context">The HTTP environment.</param>
         /// <param name="options">The options used by the authentication middleware.</param>
         /// <param name="backchannel">The HTTP client used by the authentication middleware</param>
         /// <param name="tokens">The tokens returned from the token endpoint.</param>
         public OAuthCreatingTicketContext(
+            AuthenticationTicket ticket,
             HttpContext context,
             OAuthOptions options,
             HttpClient backchannel,
             OAuthTokenResponse tokens)
-            : this(context, options, backchannel, tokens, user: new JObject())
+            : this(ticket, context, options, backchannel, tokens, user: new JObject())
         {
         }
 
         /// <summary>
         /// Initializes a new <see cref="OAuthCreatingTicketContext"/>.
         /// </summary>
+        /// <param name="ticket">The <see cref="AuthenticationTicket"/>.</param>
         /// <param name="context">The HTTP environment.</param>
         /// <param name="options">The options used by the authentication middleware.</param>
         /// <param name="backchannel">The HTTP client used by the authentication middleware</param>
         /// <param name="tokens">The tokens returned from the token endpoint.</param>
         /// <param name="user">The JSON-serialized user.</param>
         public OAuthCreatingTicketContext(
+            AuthenticationTicket ticket,
             HttpContext context,
             OAuthOptions options,
             HttpClient backchannel,
@@ -77,6 +81,7 @@ namespace Microsoft.AspNet.Authentication.OAuth
             Backchannel = backchannel;
             User = user;
             Options = options;
+            Ticket = ticket;
         }
 
         public OAuthOptions Options { get; }
@@ -130,19 +135,14 @@ namespace Microsoft.AspNet.Authentication.OAuth
         public HttpClient Backchannel { get; }
 
         /// <summary>
-        /// Gets the <see cref="ClaimsPrincipal"/> representing the user.
+        /// The <see cref="AuthenticationTicket"/> that will be created.
         /// </summary>
-        public ClaimsPrincipal Principal { get; set; }
+        public AuthenticationTicket Ticket { get; set; }
 
         /// <summary>
-        /// Gets the main identity exposed by <see cref="Principal"/>.
-        /// This property returns <c>null</c> when <see cref="Principal"/> is <c>null</c>.
+        /// Gets the main identity exposed by <see cref="Ticket"/>.
+        /// This property returns <c>null</c> when <see cref="Ticket"/> is <c>null</c>.
         /// </summary>
-        public ClaimsIdentity Identity => Principal?.Identity as ClaimsIdentity;
-
-        /// <summary>
-        /// Gets or sets a property bag for common authentication properties.
-        /// </summary>
-        public AuthenticationProperties Properties { get; set; }
+        public ClaimsIdentity Identity => Ticket?.Principal.Identity as ClaimsIdentity;
     }
 }

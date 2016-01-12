@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Http;
@@ -14,11 +13,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json.Linq;
 
@@ -99,7 +100,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                     message.IdTokenHint = principal?.FindFirst(OpenIdConnectParameterNames.IdToken)?.Value;
                 }
 
-                var redirectContext = new RedirectContext(Context, Options)
+                var redirectContext = new RedirectContext(Context, Options, properties)
                 {
                     ProtocolMessage = message
                 };
@@ -107,12 +108,12 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 await Options.Events.RedirectToEndSessionEndpoint(redirectContext);
                 if (redirectContext.HandledResponse)
                 {
-                    Logger.LogVerbose(1, "RedirectToEndSessionEndpoint.HandledResponse");
+                    Logger.LogDebug(1, "RedirectToEndSessionEndpoint.HandledResponse");
                     return;
                 }
                 else if (redirectContext.Skipped)
                 {
-                    Logger.LogVerbose(2, "RedirectToEndSessionEndpoint.Skipped");
+                    Logger.LogDebug(2, "RedirectToEndSessionEndpoint.Skipped");
                     return;
                 }
 
@@ -170,7 +171,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 throw new ArgumentNullException(nameof(context));
             }
 
-            Logger.LogDebug(4, "Entering {0}." + nameof(HandleUnauthorizedAsync), GetType());
+            Logger.LogTrace(4, "Entering {0}." + nameof(HandleUnauthorizedAsync), GetType());
 
             // order for local RedirectUri
             // 1. challenge.Properties.RedirectUri
@@ -181,7 +182,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             {
                 properties.RedirectUri = CurrentUri;
             }
-            Logger.LogDebug(5, "Using properties.RedirectUri for 'local redirect' post authentication: '{0}'.", properties.RedirectUri);
+            Logger.LogTrace(5, "Using properties.RedirectUri for 'local redirect' post authentication: '{0}'.", properties.RedirectUri);
 
             if (_configuration == null && Options.ConfigurationManager != null)
             {
@@ -215,7 +216,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
             GenerateCorrelationId(properties);
 
-            var redirectContext = new RedirectContext(Context, Options)
+            var redirectContext = new RedirectContext(Context, Options, properties)
             {
                 ProtocolMessage = message
             };
@@ -223,12 +224,12 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.RedirectToAuthenticationEndpoint(redirectContext);
             if (redirectContext.HandledResponse)
             {
-                Logger.LogVerbose(6, "RedirectToAuthenticationEndpoint.HandledResponse");
+                Logger.LogDebug(6, "RedirectToAuthenticationEndpoint.HandledResponse");
                 return true;
             }
             else if (redirectContext.Skipped)
             {
-                Logger.LogVerbose(7, "RedirectToAuthenticationEndpoint.Skipped");
+                Logger.LogDebug(7, "RedirectToAuthenticationEndpoint.Skipped");
                 return false;
             }
 
@@ -294,7 +295,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
         /// <remarks>Uses log id's OIDCH-0000 - OIDCH-0025</remarks>
         protected override async Task<AuthenticateResult> HandleRemoteAuthenticateAsync()
         {
-            Logger.LogDebug(10, "Entering: {0}." + nameof(HandleRemoteAuthenticateAsync), GetType());
+            Logger.LogTrace(10, "Entering: {0}." + nameof(HandleRemoteAuthenticateAsync), GetType());
 
             OpenIdConnectMessage message = null;
 
@@ -307,7 +308,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 // See http://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Security
                 if (!string.IsNullOrEmpty(message.IdToken) || !string.IsNullOrEmpty(message.AccessToken))
                 {
-                    return AuthenticateResult.Failed("An OpenID Connect response cannot contain an " +
+                    return AuthenticateResult.Fail("An OpenID Connect response cannot contain an " +
                             "identity token or an access token when using response_mode=query");
                 }
             }
@@ -324,7 +325,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
             if (message == null)
             {
-                return AuthenticateResult.Failed("No message.");
+                return AuthenticateResult.Fail("No message.");
             }
 
             try
@@ -332,11 +333,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 var messageReceivedContext = await RunMessageReceivedEventAsync(message);
                 if (messageReceivedContext.HandledResponse)
                 {
-                    return AuthenticateResult.Success(messageReceivedContext.AuthenticationTicket);
+                    return AuthenticateResult.Success(messageReceivedContext.Ticket);
                 }
                 else if (messageReceivedContext.Skipped)
                 {
-                    return AuthenticateResult.Success(ticket: null);
+                    return AuthenticateResult.Skip();
                 }
                 message = messageReceivedContext.ProtocolMessage;
 
@@ -344,8 +345,8 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 if (string.IsNullOrEmpty(message.State))
                 {
                     // This wasn't a valid ODIC message, it may not have been intended for us.
-                    Logger.LogVerbose(11, "message.State is null or empty.");
-                    return AuthenticateResult.Failed(Resources.MessageStateIsNullOrEmpty);
+                    Logger.LogDebug(11, "message.State is null or empty.");
+                    return AuthenticateResult.Fail(Resources.MessageStateIsNullOrEmpty);
                 }
 
                 // if state exists and we failed to 'unprotect' this is not a message we should process.
@@ -353,14 +354,14 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 if (properties == null)
                 {
                     Logger.LogError(12, "Unable to unprotect the message.State.");
-                    return AuthenticateResult.Failed(Resources.MessageStateIsInvalid);
+                    return AuthenticateResult.Fail(Resources.MessageStateIsInvalid);
                 }
 
                 // if any of the error fields are set, throw error null
                 if (!string.IsNullOrEmpty(message.Error))
                 {
                     Logger.LogError(13, "Message contains error: '{0}', error_description: '{1}', error_uri: '{2}'.", message.Error, message.ErrorDescription ?? "ErrorDecription null", message.ErrorUri ?? "ErrorUri null");
-                    return AuthenticateResult.Failed(new OpenIdConnectProtocolException(string.Format(CultureInfo.InvariantCulture, Resources.MessageContainsError, message.Error, message.ErrorDescription ?? "ErrorDecription null", message.ErrorUri ?? "ErrorUri null")));
+                    return AuthenticateResult.Fail(new OpenIdConnectProtocolException(string.Format(CultureInfo.InvariantCulture, Resources.MessageContainsError, message.Error, message.ErrorDescription ?? "ErrorDecription null", message.ErrorUri ?? "ErrorUri null")));
                 }
 
                 string userstate = null;
@@ -369,31 +370,30 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
                 if (!ValidateCorrelationId(properties))
                 {
-                    return AuthenticateResult.Failed("Correlation failed.");
+                    return AuthenticateResult.Fail("Correlation failed.");
                 }
 
                 if (_configuration == null && Options.ConfigurationManager != null)
                 {
-                    Logger.LogVerbose(14, "Updating configuration");
+                    Logger.LogDebug(14, "Updating configuration");
                     _configuration = await Options.ConfigurationManager.GetConfigurationAsync(Context.RequestAborted);
                 }
 
-                Logger.LogDebug(15, "Authorization response received.");
-                var authorizationResponseReceivedContext = new AuthorizationResponseReceivedContext(Context, Options)
+                Logger.LogTrace(15, "Authorization response received.");
+                var authorizationResponseReceivedContext = new AuthorizationResponseReceivedContext(Context, Options, properties)
                 {
-                    ProtocolMessage = message,
-                    Properties = properties
+                    ProtocolMessage = message
                 };
                 await Options.Events.AuthorizationResponseReceived(authorizationResponseReceivedContext);
                 if (authorizationResponseReceivedContext.HandledResponse)
                 {
-                    Logger.LogVerbose(16, "AuthorizationResponseReceived.HandledResponse");
-                    return AuthenticateResult.Success(authorizationResponseReceivedContext.AuthenticationTicket);
+                    Logger.LogDebug(16, "AuthorizationResponseReceived.HandledResponse");
+                    return AuthenticateResult.Success(authorizationResponseReceivedContext.Ticket);
                 }
                 else if (authorizationResponseReceivedContext.Skipped)
                 {
-                    Logger.LogVerbose(17, "AuthorizationResponseReceived.Skipped");
-                    return AuthenticateResult.Success(ticket: null);
+                    Logger.LogDebug(17, "AuthorizationResponseReceived.Skipped");
+                    return AuthenticateResult.Skip();
                 }
                 message = authorizationResponseReceivedContext.ProtocolMessage;
                 properties = authorizationResponseReceivedContext.Properties;
@@ -408,8 +408,8 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 }
                 else
                 {
-                    Logger.LogDebug(18, "Cannot process the message. Both id_token and code are missing.");
-                    return AuthenticateResult.Failed(Resources.IdTokenCodeMissing);
+                    Logger.LogTrace(18, "Cannot process the message. Both id_token and code are missing.");
+                    return AuthenticateResult.Fail(Resources.IdTokenCodeMissing);
                 }
             }
             catch (Exception exception)
@@ -421,7 +421,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 {
                     if (Options.ConfigurationManager != null)
                     {
-                        Logger.LogVerbose(20, "exception of type 'SecurityTokenSignatureKeyNotFoundException' thrown, Options.ConfigurationManager.RequestRefresh() called.");
+                        Logger.LogDebug(20, "exception of type 'SecurityTokenSignatureKeyNotFoundException' thrown, Options.ConfigurationManager.RequestRefresh() called.");
                         Options.ConfigurationManager.RequestRefresh();
                     }
                 }
@@ -429,11 +429,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 var authenticationFailedContext = await RunAuthenticationFailedEventAsync(message, exception);
                 if (authenticationFailedContext.HandledResponse)
                 {
-                    return AuthenticateResult.Success(authenticationFailedContext.AuthenticationTicket);
+                    return AuthenticateResult.Success(authenticationFailedContext.Ticket);
                 }
                 else if (authenticationFailedContext.Skipped)
                 {
-                    return AuthenticateResult.Success(ticket: null);
+                    return AuthenticateResult.Skip();
                 }
 
                 throw;
@@ -455,28 +455,28 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             var authorizationCodeReceivedContext = await RunAuthorizationCodeReceivedEventAsync(message, properties, ticket, jwt);
             if (authorizationCodeReceivedContext.HandledResponse)
             {
-                return AuthenticateResult.Success(authorizationCodeReceivedContext.AuthenticationTicket);
+                return AuthenticateResult.Success(authorizationCodeReceivedContext.Ticket);
             }
             else if (authorizationCodeReceivedContext.Skipped)
             {
-                return AuthenticateResult.Success(ticket: null);
+                return AuthenticateResult.Skip();
             }
             message = authorizationCodeReceivedContext.ProtocolMessage;
             var code = authorizationCodeReceivedContext.Code;
 
             // Redeeming authorization code for tokens
-            Logger.LogDebug(21, "Id Token is null. Redeeming code '{0}' for tokens.", code);
+            Logger.LogTrace(21, "Id Token is null. Redeeming code '{0}' for tokens.", code);
 
             var tokenEndpointResponse = await RedeemAuthorizationCodeAsync(code, authorizationCodeReceivedContext.RedirectUri);
 
-            var authorizationCodeRedeemedContext = await RunTokenResponseReceivedEventAsync(message, tokenEndpointResponse);
+            var authorizationCodeRedeemedContext = await RunTokenResponseReceivedEventAsync(message, tokenEndpointResponse, properties);
             if (authorizationCodeRedeemedContext.HandledResponse)
             {
-                return AuthenticateResult.Success(authorizationCodeRedeemedContext.AuthenticationTicket);
+                return AuthenticateResult.Success(authorizationCodeRedeemedContext.Ticket);
             }
             else if (authorizationCodeRedeemedContext.Skipped)
             {
-                return AuthenticateResult.Success(ticket: null);
+                return AuthenticateResult.Skip();
             }
 
             message = authorizationCodeRedeemedContext.ProtocolMessage;
@@ -502,16 +502,16 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 Nonce = nonce
             });
 
-            var authenticationValidatedContext = await RunAuthenticationValidatedEventAsync(message, ticket, tokenEndpointResponse);
+            var authenticationValidatedContext = await RunAuthenticationValidatedEventAsync(message, ticket, properties, tokenEndpointResponse);
             if (authenticationValidatedContext.HandledResponse)
             {
-                return AuthenticateResult.Success(authenticationValidatedContext.AuthenticationTicket);
+                return AuthenticateResult.Success(authenticationValidatedContext.Ticket);
             }
             else if (authenticationValidatedContext.Skipped)
             {
-                return AuthenticateResult.Success(ticket: null);
+                return AuthenticateResult.Skip();
             }
-            ticket = authenticationValidatedContext.AuthenticationTicket;
+            ticket = authenticationValidatedContext.Ticket;
 
             if (Options.SaveTokensAsClaims)
             {
@@ -521,7 +521,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
             if (Options.GetClaimsFromUserInfoEndpoint)
             {
-                Logger.LogDebug(22, "Sending request to user info endpoint for retrieving claims.");
+                Logger.LogTrace(22, "Sending request to user info endpoint for retrieving claims.");
                 ticket = await GetUserInformationAsync(tokenEndpointResponse, jwt, ticket);
             }
 
@@ -531,7 +531,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
         // Implicit Flow or Hybrid Flow
         private async Task<AuthenticateResult> HandleIdTokenFlows(OpenIdConnectMessage message, AuthenticationProperties properties)
         {
-            Logger.LogDebug(23, "'id_token' received: '{0}'", message.IdToken);
+            Logger.LogTrace(23, "'id_token' received: '{0}'", message.IdToken);
 
             JwtSecurityToken jwt = null;
             var validationParameters = Options.TokenValidationParameters.Clone();
@@ -551,17 +551,17 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 Nonce = nonce
             });
 
-            var authenticationValidatedContext = await RunAuthenticationValidatedEventAsync(message, ticket, tokenEndpointResponse: null);
+            var authenticationValidatedContext = await RunAuthenticationValidatedEventAsync(message, ticket, properties, tokenEndpointResponse: null);
             if (authenticationValidatedContext.HandledResponse)
             {
-                return AuthenticateResult.Success(authenticationValidatedContext.AuthenticationTicket);
+                return AuthenticateResult.Success(authenticationValidatedContext.Ticket);
             }
             else if (authenticationValidatedContext.Skipped)
             {
-                return AuthenticateResult.Success(ticket: null);
+                return AuthenticateResult.Skip();
             }
             message = authenticationValidatedContext.ProtocolMessage;
-            ticket = authenticationValidatedContext.AuthenticationTicket;
+            ticket = authenticationValidatedContext.Ticket;
 
             // Hybrid Flow
             if (message.Code != null)
@@ -569,14 +569,14 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
                 var authorizationCodeReceivedContext = await RunAuthorizationCodeReceivedEventAsync(message, properties, ticket, jwt);
                 if (authorizationCodeReceivedContext.HandledResponse)
                 {
-                    return AuthenticateResult.Success(authorizationCodeReceivedContext.AuthenticationTicket);
+                    return AuthenticateResult.Success(authorizationCodeReceivedContext.Ticket);
                 }
                 else if (authorizationCodeReceivedContext.Skipped)
                 {
-                    return AuthenticateResult.Success(ticket: null);
+                    return AuthenticateResult.Skip();
                 }
                 message = authorizationCodeReceivedContext.ProtocolMessage;
-                ticket = authorizationCodeReceivedContext.AuthenticationTicket;
+                ticket = authorizationCodeReceivedContext.Ticket;
 
                 if (Options.SaveTokensAsClaims)
                 {
@@ -667,13 +667,13 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             var userInformationReceivedContext = await RunUserInformationReceivedEventAsync(ticket, message, user);
             if (userInformationReceivedContext.HandledResponse)
             {
-                return userInformationReceivedContext.AuthenticationTicket;
+                return userInformationReceivedContext.Ticket;
             }
             else if (userInformationReceivedContext.Skipped)
             {
-                return null;
+                return ticket;
             }
-            ticket = userInformationReceivedContext.AuthenticationTicket;
+            ticket = userInformationReceivedContext.Ticket;
             user = userInformationReceivedContext.User;
 
             Options.ProtocolValidator.ValidateUserInfoResponse(new OpenIdConnectProtocolValidationContext()
@@ -925,7 +925,7 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
         private async Task<MessageReceivedContext> RunMessageReceivedEventAsync(OpenIdConnectMessage message)
         {
-            Logger.LogDebug(29, "MessageReceived: '{0}'", message.BuildRedirectUrl());
+            Logger.LogTrace(29, "MessageReceived: '{0}'", message.BuildRedirectUrl());
             var messageReceivedContext = new MessageReceivedContext(Context, Options)
             {
                 ProtocolMessage = message
@@ -934,11 +934,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.MessageReceived(messageReceivedContext);
             if (messageReceivedContext.HandledResponse)
             {
-                Logger.LogVerbose(30, "MessageReceivedContext.HandledResponse");
+                Logger.LogDebug(30, "MessageReceivedContext.HandledResponse");
             }
             else if (messageReceivedContext.Skipped)
             {
-                Logger.LogVerbose(31, "MessageReceivedContext.Skipped");
+                Logger.LogDebug(31, "MessageReceivedContext.Skipped");
             }
 
             return messageReceivedContext;
@@ -948,34 +948,34 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
         {
             var redirectUri = properties.Items[OpenIdConnectDefaults.RedirectUriForCodePropertiesKey];
 
-            Logger.LogDebug(32, "AuthorizationCode received: '{0}'", message.Code);
+            Logger.LogTrace(32, "AuthorizationCode received: '{0}'", message.Code);
 
-            var authorizationCodeReceivedContext = new AuthorizationCodeReceivedContext(Context, Options)
+            var authorizationCodeReceivedContext = new AuthorizationCodeReceivedContext(Context, Options, properties)
             {
                 Code = message.Code,
                 ProtocolMessage = message,
                 RedirectUri = redirectUri,
-                AuthenticationTicket = ticket,
+                Ticket = ticket,
                 JwtSecurityToken = jwt
             };
 
             await Options.Events.AuthorizationCodeReceived(authorizationCodeReceivedContext);
             if (authorizationCodeReceivedContext.HandledResponse)
             {
-                Logger.LogVerbose(33, "AuthorizationCodeReceivedContext.HandledResponse");
+                Logger.LogDebug(33, "AuthorizationCodeReceivedContext.HandledResponse");
             }
             else if (authorizationCodeReceivedContext.Skipped)
             {
-                Logger.LogVerbose(34, "AuthorizationCodeReceivedContext.Skipped");
+                Logger.LogDebug(34, "AuthorizationCodeReceivedContext.Skipped");
             }
 
             return authorizationCodeReceivedContext;
         }
 
-        private async Task<TokenResponseReceivedContext> RunTokenResponseReceivedEventAsync(OpenIdConnectMessage message, OpenIdConnectMessage tokenEndpointResponse)
+        private async Task<TokenResponseReceivedContext> RunTokenResponseReceivedEventAsync(OpenIdConnectMessage message, OpenIdConnectMessage tokenEndpointResponse, AuthenticationProperties properties)
         {
-            Logger.LogDebug(35, "Token response received.");
-            var tokenResponseReceivedContext = new TokenResponseReceivedContext(Context, Options)
+            Logger.LogTrace(35, "Token response received.");
+            var tokenResponseReceivedContext = new TokenResponseReceivedContext(Context, Options, properties)
             {
                 ProtocolMessage = message,
                 TokenEndpointResponse = tokenEndpointResponse
@@ -984,20 +984,20 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.TokenResponseReceived(tokenResponseReceivedContext);
             if (tokenResponseReceivedContext.HandledResponse)
             {
-                Logger.LogVerbose(36, "AuthorizationCodeRedeemedContext.HandledResponse");
+                Logger.LogDebug(36, "AuthorizationCodeRedeemedContext.HandledResponse");
             }
             else if (tokenResponseReceivedContext.Skipped)
             {
-                Logger.LogVerbose(37, "AuthorizationCodeRedeemedContext.Skipped");
+                Logger.LogDebug(37, "AuthorizationCodeRedeemedContext.Skipped");
             }
             return tokenResponseReceivedContext;
         }
 
-        private async Task<AuthenticationValidatedContext> RunAuthenticationValidatedEventAsync(OpenIdConnectMessage message, AuthenticationTicket ticket, OpenIdConnectMessage tokenEndpointResponse)
+        private async Task<AuthenticationValidatedContext> RunAuthenticationValidatedEventAsync(OpenIdConnectMessage message, AuthenticationTicket ticket, AuthenticationProperties properties, OpenIdConnectMessage tokenEndpointResponse)
         {
-            var authenticationValidatedContext = new AuthenticationValidatedContext(Context, Options)
+            var authenticationValidatedContext = new AuthenticationValidatedContext(Context, Options, properties)
             {
-                AuthenticationTicket = ticket,
+                Ticket = ticket,
                 ProtocolMessage = message,
                 TokenEndpointResponse = tokenEndpointResponse,
             };
@@ -1005,11 +1005,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.AuthenticationValidated(authenticationValidatedContext);
             if (authenticationValidatedContext.HandledResponse)
             {
-                Logger.LogVerbose(38, "AuthenticationValidated.HandledResponse");
+                Logger.LogDebug(38, "AuthenticationValidated.HandledResponse");
             }
             else if (authenticationValidatedContext.Skipped)
             {
-                Logger.LogVerbose(39, "AuthenticationValidated.Skipped");
+                Logger.LogDebug(39, "AuthenticationValidated.Skipped");
             }
 
             return authenticationValidatedContext;
@@ -1017,11 +1017,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
 
         private async Task<UserInformationReceivedContext> RunUserInformationReceivedEventAsync(AuthenticationTicket ticket, OpenIdConnectMessage message, JObject user)
         {
-            Logger.LogDebug(40, "User information received: {0}", user.ToString());
+            Logger.LogTrace(40, "User information received: {0}", user.ToString());
 
             var userInformationReceivedContext = new UserInformationReceivedContext(Context, Options)
             {
-                AuthenticationTicket = ticket,
+                Ticket = ticket,
                 ProtocolMessage = message,
                 User = user,
             };
@@ -1029,11 +1029,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.UserInformationReceived(userInformationReceivedContext);
             if (userInformationReceivedContext.HandledResponse)
             {
-                Logger.LogVerbose(41, "The UserInformationReceived event returned Handled.");
+                Logger.LogDebug(41, "The UserInformationReceived event returned Handled.");
             }
             else if (userInformationReceivedContext.Skipped)
             {
-                Logger.LogVerbose(42, "The UserInformationReceived event returned Skipped.");
+                Logger.LogDebug(42, "The UserInformationReceived event returned Skipped.");
             }
 
             return userInformationReceivedContext;
@@ -1050,11 +1050,11 @@ namespace Microsoft.AspNet.Authentication.OpenIdConnect
             await Options.Events.AuthenticationFailed(authenticationFailedContext);
             if (authenticationFailedContext.HandledResponse)
             {
-                Logger.LogVerbose(43, "AuthenticationFailedContext.HandledResponse");
+                Logger.LogDebug(43, "AuthenticationFailedContext.HandledResponse");
             }
             else if (authenticationFailedContext.Skipped)
             {
-                Logger.LogVerbose(44, "AuthenticationFailedContext.Skipped");
+                Logger.LogDebug(44, "AuthenticationFailedContext.Skipped");
             }
 
             return authenticationFailedContext;

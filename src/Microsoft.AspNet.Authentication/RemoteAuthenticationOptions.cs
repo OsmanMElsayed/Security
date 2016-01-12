@@ -3,10 +3,10 @@
 
 using System;
 using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.AspNet.Http;
+using Microsoft.AspNet.Authentication;
 
-namespace Microsoft.AspNet.Authentication
+namespace Microsoft.AspNet.Builder
 {
     public class RemoteAuthenticationOptions : AuthenticationOptions
     {
@@ -47,6 +47,14 @@ namespace Microsoft.AspNet.Authentication
             get { return Description.DisplayName; }
             set { Description.DisplayName = value; }
         }
+
+        /// <summary>
+        /// Defines whether access and refresh tokens should be stored in the
+        /// <see cref="ClaimsPrincipal"/> after a successful authentication.
+        /// This property is set to <c>false</c> by default to reduce
+        /// the size of the final authentication cookie.
+        /// </summary>
+        public bool SaveTokensAsClaims { get; set; }
 
         public IRemoteAuthenticationEvents Events = new RemoteAuthenticationEvents();
     }

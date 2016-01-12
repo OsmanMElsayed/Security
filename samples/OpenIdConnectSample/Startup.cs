@@ -2,8 +2,10 @@ using System.Linq;
 using Microsoft.AspNet.Authentication.Cookies;
 using Microsoft.AspNet.Authentication.OpenIdConnect;
 using Microsoft.AspNet.Builder;
+using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -12,6 +14,16 @@ namespace OpenIdConnectSample
 {
     public class Startup
     {
+        public Startup()
+        {
+            Configuration = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .AddUserSecrets()
+                .Build();
+        }
+
+        public IConfiguration Configuration { get; set; }
+
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddAuthentication(sharedOptions => sharedOptions.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme);
@@ -23,18 +35,18 @@ namespace OpenIdConnectSample
 
             app.UseIISPlatformHandler();
 
-            app.UseCookieAuthentication(options =>
+            app.UseCookieAuthentication(new CookieAuthenticationOptions
             {
-                options.AutomaticAuthenticate = true;
+                AutomaticAuthenticate = true
             });
 
-            app.UseOpenIdConnectAuthentication(options =>
+            app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions
             {
-                options.ClientId = "63a87a83-64b9-4ac1-b2c5-092126f8474f";
-                options.ClientSecret = "Yse2iP7tO1Azq0iDajNisMaTSnIDv+FXmAsFuXr+Cy8="; // for code flow
-                options.Authority = "https://login.windows.net/tratcheroutlook.onmicrosoft.com";
-                options.ResponseType = OpenIdConnectResponseTypes.Code;
-                options.GetClaimsFromUserInfoEndpoint = true;
+                ClientId = Configuration["oidc:clientid"],
+                ClientSecret = Configuration["oidc:clientsecret"], // for code flow
+                Authority = Configuration["oidc:authority"],
+                ResponseType = OpenIdConnectResponseTypes.Code,
+                GetClaimsFromUserInfoEndpoint = true
             });
 
             app.Run(async context =>
@@ -51,6 +63,16 @@ namespace OpenIdConnectSample
                 context.Response.ContentType = "text/plain";
                 await context.Response.WriteAsync("Hello Authenticated User");
             });
+        }
+
+        public static void Main(string[] args)
+        {
+            var application = new WebApplicationBuilder()
+                .UseConfiguration(WebApplicationConfiguration.GetDefault(args))
+                .UseStartup<Startup>()
+                .Build();
+
+            application.Run();
         }
     }
 }

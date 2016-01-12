@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,6 +12,7 @@ using Microsoft.AspNet.Authentication.Cookies;
 using Microsoft.AspNet.Authentication.OAuth;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.DataProtection;
+using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.TestHost;
@@ -30,23 +30,23 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var server = CreateServer(
                 app =>
                 {
-                    app.UseFacebookAuthentication(options =>
+                    app.UseFacebookAuthentication(new FacebookOptions
                     {
-                        options.AppId = "Test App Id";
-                        options.AppSecret = "Test App Secret";
-                        options.Events = new OAuthEvents
+                        AppId = "Test App Id",
+                        AppSecret = "Test App Secret",
+                        Events = new OAuthEvents
                         {
                             OnRedirectToAuthorizationEndpoint = context =>
                             {
                                 context.Response.Redirect(context.RedirectUri + "&custom=test");
                                 return Task.FromResult(0);
                             }
-                        };
+                        }
                     });
-                    app.UseCookieAuthentication(options =>
+                    app.UseCookieAuthentication(new CookieAuthenticationOptions
                     {
-                        options.AuthenticationScheme = "External";
-                        options.AutomaticAuthenticate = true;
+                        AuthenticationScheme = "External",
+                        AutomaticAuthenticate = true
                     });
                 },
                 services =>
@@ -73,11 +73,11 @@ namespace Microsoft.AspNet.Authentication.Facebook
         {
             var server = CreateServer(app =>
                 app.Map("/base", map => {
-                    map.UseFacebookAuthentication(options =>
+                    map.UseFacebookAuthentication(new FacebookOptions
                     {
-                        options.AppId = "Test App Id";
-                        options.AppSecret = "Test App Secret";
-                        options.SignInScheme = "External";
+                        AppId = "Test App Id",
+                        AppSecret = "Test App Secret",
+                        SignInScheme = "External"
                     });
                     map.Map("/login", signoutApp => signoutApp.Run(context => context.Authentication.ChallengeAsync("Facebook", new AuthenticationProperties() { RedirectUri = "/" })));
                 }),
@@ -86,7 +86,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var transaction = await server.SendAsync("http://example.com/base/login");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
             var location = transaction.Response.Headers.Location.AbsoluteUri;
-            Assert.Contains("https://www.facebook.com/v2.2/dialog/oauth", location);
+            Assert.Contains("https://www.facebook.com/v2.5/dialog/oauth", location);
             Assert.Contains("response_type=code", location);
             Assert.Contains("client_id=", location);
             Assert.Contains("redirect_uri=" + UrlEncoder.Default.Encode("http://example.com/base/signin-facebook"), location);
@@ -100,11 +100,11 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var server = CreateServer(
                 app =>
                 {
-                    app.UseFacebookAuthentication(options =>
+                    app.UseFacebookAuthentication(new FacebookOptions
                     {
-                        options.AppId = "Test App Id";
-                        options.AppSecret = "Test App Secret";
-                        options.SignInScheme = "External";
+                        AppId = "Test App Id",
+                        AppSecret = "Test App Secret",
+                        SignInScheme = "External"
                     });
                     app.Map("/login", signoutApp => signoutApp.Run(context => context.Authentication.ChallengeAsync("Facebook", new AuthenticationProperties() { RedirectUri = "/" })));
                 },
@@ -113,7 +113,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var transaction = await server.SendAsync("http://example.com/login");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
             var location = transaction.Response.Headers.Location.AbsoluteUri;
-            Assert.Contains("https://www.facebook.com/v2.2/dialog/oauth", location);
+            Assert.Contains("https://www.facebook.com/v2.5/dialog/oauth", location);
             Assert.Contains("response_type=code", location);
             Assert.Contains("client_id=", location);
             Assert.Contains("redirect_uri="+ UrlEncoder.Default.Encode("http://example.com/signin-facebook"), location);
@@ -127,12 +127,15 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var server = CreateServer(
                 app =>
                 {
-                    app.UseFacebookAuthentication(options =>
+                    app.UseFacebookAuthentication(new FacebookOptions
                     {
-                        options.AppId = "Test App Id";
-                        options.AppSecret = "Test App Secret";
+                        AppId = "Test App Id",
+                        AppSecret = "Test App Secret"
                     });
-                    app.UseCookieAuthentication(options => options.AuthenticationScheme = "External");
+                    app.UseCookieAuthentication(new CookieAuthenticationOptions
+                    {
+                        AuthenticationScheme = "External"
+                    });
                 },
                 services =>
                 {
@@ -147,7 +150,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
             var transaction = await server.SendAsync("http://example.com/challenge");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
             var location = transaction.Response.Headers.Location.AbsoluteUri;
-            Assert.Contains("https://www.facebook.com/v2.2/dialog/oauth", location);
+            Assert.Contains("https://www.facebook.com/v2.5/dialog/oauth", location);
             Assert.Contains("response_type=code", location);
             Assert.Contains("client_id=", location);
             Assert.Contains("redirect_uri=", location);
@@ -165,24 +168,24 @@ namespace Microsoft.AspNet.Authentication.Facebook
                 app =>
                 {
                     app.UseCookieAuthentication();
-                    app.UseFacebookAuthentication(options =>
+                    app.UseFacebookAuthentication(new FacebookOptions
                     {
-                        options.AppId = "Test App Id";
-                        options.AppSecret = "Test App Secret";
-                        options.StateDataFormat = stateFormat;
-                        options.UserInformationEndpoint = customUserInfoEndpoint;
-                        options.BackchannelHttpHandler = new TestHttpMessageHandler
+                        AppId = "Test App Id",
+                        AppSecret = "Test App Secret",
+                        StateDataFormat = stateFormat,
+                        UserInformationEndpoint = customUserInfoEndpoint,
+                        BackchannelHttpHandler = new TestHttpMessageHandler
                         {
                             Sender = req =>
                             {
                                 if (req.RequestUri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.UriEscaped) == FacebookDefaults.TokenEndpoint)
                                 {
                                     var res = new HttpResponseMessage(HttpStatusCode.OK);
-                                    var tokenResponse = new Dictionary<string, string>
+                                    var graphResponse = JsonConvert.SerializeObject(new
                                     {
-                                        { "access_token", "TestAuthToken" },
-                                    };
-                                    res.Content = new FormUrlEncodedContent(tokenResponse);
+                                        access_token = "TestAuthToken"
+                                    });
+                                    res.Content = new StringContent(graphResponse, Encoding.UTF8);
                                     return res;
                                 }
                                 if (req.RequestUri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.UriEscaped) ==
@@ -200,7 +203,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
                                 }
                                 return null;
                             }
-                        };
+                        }
                     });
                 },
                 services =>
@@ -226,21 +229,23 @@ namespace Microsoft.AspNet.Authentication.Facebook
 
         private static TestServer CreateServer(Action<IApplicationBuilder> configure, Action<IServiceCollection> configureServices, Func<HttpContext, bool> handler)
         {
-            return TestServer.Create(app =>
-            {
-                if (configure != null)
+            var builder = new WebApplicationBuilder()
+                .Configure(app =>
                 {
-                    configure(app);
-                }
-                app.Use(async (context, next) =>
-                {
-                    if (handler == null || !handler(context))
+                    if (configure != null)
                     {
-                        await next();
+                        configure(app);
                     }
-                });
-            },
-            configureServices);
+                    app.Use(async (context, next) =>
+                    {
+                        if (handler == null || !handler(context))
+                        {
+                            await next();
+                        }
+                    });
+                })
+                .ConfigureServices(configureServices);
+            return new TestServer(builder);
         }
     }
 }

@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.AspNet.CookiePolicy;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNet.Builder
 {
@@ -15,27 +16,35 @@ namespace Microsoft.AspNet.Builder
         /// Adds the <see cref="CookiePolicyMiddleware"/> middleware to the specified <see cref="IApplicationBuilder"/>, which enables cookie policy capabilities.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/> to add the middleware to.</param>
-        /// <param name="options">A <see cref="CookiePolicyOptions"/> that specifies options for the middleware.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
-        public static IApplicationBuilder UseCookiePolicy(this IApplicationBuilder app, CookiePolicyOptions options)
+        public static IApplicationBuilder UseCookiePolicy(this IApplicationBuilder app)
         {
-            return app.UseMiddleware<CookiePolicyMiddleware>(options);
+            if (app == null)
+            {
+                throw new ArgumentNullException(nameof(app));
+            }
+
+            return app.UseMiddleware<CookiePolicyMiddleware>();
         }
 
         /// <summary>
         /// Adds the <see cref="CookiePolicyMiddleware"/> middleware to the specified <see cref="IApplicationBuilder"/>, which enables cookie policy capabilities.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/> to add the middleware to.</param>
-        /// <param name="configureOptions">An action delegate to configure the provided <see cref="CookiePolicyOptions"/>.</param>
+        /// <param name="options">A <see cref="CookiePolicyOptions"/> that specifies options for the middleware.</param>
         /// <returns>A reference to this instance after the operation has completed.</returns>
-        public static IApplicationBuilder UseCookiePolicy(this IApplicationBuilder app, Action<CookiePolicyOptions> configureOptions)
+        public static IApplicationBuilder UseCookiePolicy(this IApplicationBuilder app, CookiePolicyOptions options)
         {
-            var options = new CookiePolicyOptions();
-            if (configureOptions != null)
+            if (app == null)
             {
-                configureOptions(options);
+                throw new ArgumentNullException(nameof(app));
             }
-            return app.UseCookiePolicy(options);
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            return app.UseMiddleware<CookiePolicyMiddleware>(Options.Create(options));
         }
     }
 }

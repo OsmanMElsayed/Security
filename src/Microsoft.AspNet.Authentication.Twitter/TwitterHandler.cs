@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
@@ -24,7 +25,7 @@ namespace Microsoft.AspNet.Authentication.Twitter
         private static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         private const string StateCookie = "__TwitterState";
         private const string RequestTokenEndpoint = "https://api.twitter.com/oauth/request_token";
-        private const string AuthenticationEndpoint = "https://twitter.com/oauth/authenticate?oauth_token=";
+        private const string AuthenticationEndpoint = "https://api.twitter.com/oauth/authenticate?oauth_token=";
         private const string AccessTokenEndpoint = "https://api.twitter.com/oauth/access_token";
 
         private readonly HttpClient _httpClient;
@@ -44,7 +45,7 @@ namespace Microsoft.AspNet.Authentication.Twitter
 
             if (requestToken == null)
             {
-                return AuthenticateResult.Failed("Invalid state cookie.");
+                return AuthenticateResult.Fail("Invalid state cookie.");
             }
 
             properties = requestToken.Properties;
@@ -54,18 +55,18 @@ namespace Microsoft.AspNet.Authentication.Twitter
             var returnedToken = query["oauth_token"];
             if (StringValues.IsNullOrEmpty(returnedToken))
             {
-                return AuthenticateResult.Failed("Missing oauth_token");
+                return AuthenticateResult.Fail("Missing oauth_token");
             }
 
             if (!string.Equals(returnedToken, requestToken.Token, StringComparison.Ordinal))
             {
-                return AuthenticateResult.Failed("Unmatched token");
+                return AuthenticateResult.Fail("Unmatched token");
             }
 
             var oauthVerifier = query["oauth_verifier"];
             if (StringValues.IsNullOrEmpty(oauthVerifier))
             {
-                return AuthenticateResult.Failed("Missing or blank oauth_verifier");
+                return AuthenticateResult.Fail("Missing or blank oauth_verifier");
             }
 
             var cookieOptions = new CookieOptions
@@ -147,7 +148,7 @@ namespace Microsoft.AspNet.Authentication.Twitter
 
         private async Task<RequestToken> ObtainRequestTokenAsync(string consumerKey, string consumerSecret, string callBackUri, AuthenticationProperties properties)
         {
-            Logger.LogVerbose("ObtainRequestToken");
+            Logger.LogDebug("ObtainRequestToken");
 
             var nonce = Guid.NewGuid().ToString("N");
 
@@ -208,7 +209,7 @@ namespace Microsoft.AspNet.Authentication.Twitter
         {
             // https://dev.twitter.com/docs/api/1/post/oauth/access_token
 
-            Logger.LogVerbose("ObtainAccessToken");
+            Logger.LogDebug("ObtainAccessToken");
 
             var nonce = Guid.NewGuid().ToString("N");
 

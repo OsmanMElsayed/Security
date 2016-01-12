@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http.Features.Authentication;
 using Microsoft.Extensions.Logging;
 
@@ -22,11 +23,15 @@ namespace Microsoft.AspNet.Authentication
         protected virtual async Task<bool> HandleRemoteCallbackAsync()
         {
             var authResult = await HandleRemoteAuthenticateAsync();
+            if (authResult != null && authResult.Skipped)
+            {
+                return false;
+            }
             if (authResult == null || !authResult.Succeeded)
             {
-                var errorContext = new ErrorContext(Context, authResult?.Error ?? new Exception("Invalid return state, unable to redirect."));
-                Logger.LogInformation("Error from RemoteAuthentication: " + errorContext.Error.Message);
-                await Options.Events.RemoteError(errorContext);
+                var errorContext = new FailureContext(Context, authResult?.Failure ?? new Exception("Invalid return state, unable to redirect."));
+                Logger.LogInformation("Error from RemoteAuthentication: " + errorContext.Failure.Message);
+                await Options.Events.RemoteFailure(errorContext);
                 if (errorContext.HandledResponse)
                 {
                     return true;
@@ -36,7 +41,7 @@ namespace Microsoft.AspNet.Authentication
                     return false;
                 }
 
-                throw new AggregateException("Unhandled remote error.", errorContext.Error);
+                throw new AggregateException("Unhandled remote failure.", errorContext.Failure);
             }
 
             // We have a ticket if we get here
@@ -52,12 +57,12 @@ namespace Microsoft.AspNet.Authentication
 
             if (context.HandledResponse)
             {
-                Logger.LogVerbose("The SigningIn event returned Handled.");
+                Logger.LogDebug("The SigningIn event returned Handled.");
                 return true;
             }
             else if (context.Skipped)
             {
-                Logger.LogVerbose("The SigningIn event returned Skipped.");
+                Logger.LogDebug("The SigningIn event returned Skipped.");
                 return false;
             }
 
@@ -77,7 +82,7 @@ namespace Microsoft.AspNet.Authentication
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            return Task.FromResult(AuthenticateResult.Failed("Remote authentication does not support authenticate"));
+            return Task.FromResult(AuthenticateResult.Fail("Remote authentication does not support authenticate"));
         }
 
         protected override Task HandleSignOutAsync(SignOutContext context)

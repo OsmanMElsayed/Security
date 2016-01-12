@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Authentication.OAuth;
 using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.DataProtection;
+using Microsoft.AspNet.Hosting;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
@@ -27,10 +28,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ChallengeWillTriggerRedirection()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/challenge");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
@@ -49,10 +50,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task SignInThrows()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/signIn");
             Assert.Equal(HttpStatusCode.OK, transaction.Response.StatusCode);
@@ -61,10 +62,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task SignOutThrows()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/signOut");
             Assert.Equal(HttpStatusCode.OK, transaction.Response.StatusCode);
@@ -73,10 +74,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ForbidThrows()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/signOut");
             Assert.Equal(HttpStatusCode.OK, transaction.Response.StatusCode);
@@ -85,11 +86,11 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task Challenge401WillTriggerRedirection()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.AutomaticChallenge = true;
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                AutomaticChallenge = true
             });
             var transaction = await server.SendAsync("https://example.com/401");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
@@ -104,10 +105,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ChallengeWillSetCorrelationCookie()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/challenge");
             Assert.Contains(".AspNet.Correlation.Google=", transaction.SetCookie.Single());
@@ -116,11 +117,11 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task Challenge401WillSetCorrelationCookie()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.AutomaticChallenge = true;
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                AutomaticChallenge = true
             });
             var transaction = await server.SendAsync("https://example.com/401");
             Assert.Contains(".AspNet.Correlation.Google=", transaction.SetCookie.Single());
@@ -129,10 +130,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ChallengeWillSetDefaultScope()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var transaction = await server.SendAsync("https://example.com/challenge");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
@@ -143,11 +144,11 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task Challenge401WillSetDefaultScope()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.AutomaticChallenge = true;
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                AutomaticChallenge = true
             });
             var transaction = await server.SendAsync("https://example.com/401");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
@@ -158,11 +159,11 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ChallengeWillUseAuthenticationPropertiesAsParameters()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.AutomaticChallenge = true;
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                AutomaticChallenge = true
             },
             context =>
                 {
@@ -194,18 +195,18 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ChallengeWillTriggerApplyRedirectEvent()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.Events = new OAuthEvents
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                Events = new OAuthEvents
                 {
                     OnRedirectToAuthorizationEndpoint = context =>
                     {
                         context.Response.Redirect(context.RedirectUri + "&custom=test");
                         return Task.FromResult(0);
                     }
-                };
+                }
             });
             var transaction = await server.SendAsync("https://example.com/challenge");
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
@@ -216,10 +217,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task AuthenticateWillFail()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             },
             async context => 
             {
@@ -239,10 +240,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task ReplyPathWithoutStateQueryStringWillBeRejected()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
             var error = await Assert.ThrowsAnyAsync<Exception>(() => server.SendAsync("https://example.com/signin-google?code=TestCode"));
             Assert.Equal("The oauth state was missing or invalid.", error.GetBaseException().Message);
@@ -253,33 +254,31 @@ namespace Microsoft.AspNet.Authentication.Google
         [InlineData(false)]
         public async Task ReplyPathWithErrorFails(bool redirect)
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                if (redirect)
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                Events = redirect ? new OAuthEvents()
                 {
-                    options.Events = new OAuthEvents()
+                    OnRemoteFailure = ctx =>
                     {
-                        OnRemoteError = ctx =>
-                        {
-                            ctx.Response.Redirect("/error?ErrorMessage=" + UrlEncoder.Default.Encode(ctx.Error.Message));
-                            ctx.HandleResponse();
-                            return Task.FromResult(0);
-                        }
-                    };
-                }
+                        ctx.Response.Redirect("/error?FailureMessage=" + UrlEncoder.Default.Encode(ctx.Failure.Message));
+                        ctx.HandleResponse();
+                        return Task.FromResult(0);
+                    }
+                } : new OAuthEvents()
             });
+            var sendTask = server.SendAsync("https://example.com/signin-google?error=OMG&error_description=SoBad&error_uri=foobar");
             if (redirect)
             {
-                var transaction = await server.SendAsync("https://example.com/signin-google?error=OMG");
+                var transaction = await sendTask;
                 Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
-                Assert.Equal("/error?ErrorMessage=OMG", transaction.Response.Headers.GetValues("Location").First());
+                Assert.Equal("/error?FailureMessage=OMG"+UrlEncoder.Default.Encode(";Description=SoBad;Uri=foobar"), transaction.Response.Headers.GetValues("Location").First());
             }
             else
             {
-                var error = await Assert.ThrowsAnyAsync<Exception>(() => server.SendAsync("https://example.com/signin-google?error=OMG"));
-                Assert.Equal("OMG", error.GetBaseException().Message);
+                var error = await Assert.ThrowsAnyAsync<Exception>(() => sendTask);
+                Assert.Equal("OMG;Description=SoBad;Uri=foobar", error.GetBaseException().Message);
             }
         }
 
@@ -289,17 +288,17 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task ReplyPathWillAuthenticateValidAuthorizeCodeAndState(string claimsIssuer)
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.ClaimsIssuer = claimsIssuer;
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                ClaimsIssuer = claimsIssuer,
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
-                        if (req.RequestUri.AbsoluteUri == "https://accounts.google.com/o/oauth2/token")
+                        if (req.RequestUri.AbsoluteUri == "https://www.googleapis.com/oauth2/v3/token")
                         {
                             return ReturnJsonResponse(new
                             {
@@ -331,9 +330,9 @@ namespace Microsoft.AspNet.Authentication.Google
                             });
                         }
 
-                        return null;
+                        throw new NotImplementedException(req.RequestUri.AbsoluteUri);
                     }
-                };
+                }
             });
             var properties = new AuthenticationProperties();
             var correlationKey = ".AspNet.Correlation.Google";
@@ -371,31 +370,28 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task ReplyPathWillThrowIfCodeIsInvalid(bool redirect)
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
-                        return ReturnJsonResponse(new { Error = "Error" }, 
+                        return ReturnJsonResponse(new { Error = "Error" },
                             HttpStatusCode.BadRequest);
                     }
-                };
-                if (redirect)
+                },
+                Events = redirect ? new OAuthEvents()
                 {
-                    options.Events = new OAuthEvents()
+                    OnRemoteFailure = ctx =>
                     {
-                        OnRemoteError = ctx =>
-                        {
-                            ctx.Response.Redirect("/error?ErrorMessage=" + UrlEncoder.Default.Encode(ctx.Error.Message));
-                            ctx.HandleResponse();
-                            return Task.FromResult(0);
-                        }
-                    };
-                }
+                        ctx.Response.Redirect("/error?FailureMessage=" + UrlEncoder.Default.Encode(ctx.Failure.Message));
+                        ctx.HandleResponse();
+                        return Task.FromResult(0);
+                    }
+                } : new OAuthEvents()
             });
             var properties = new AuthenticationProperties();
             var correlationKey = ".AspNet.Correlation.Google";
@@ -411,7 +407,7 @@ namespace Microsoft.AspNet.Authentication.Google
             {
                 var transaction = await sendTask;
                 Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
-                Assert.Equal("/error?ErrorMessage=" + UrlEncoder.Default.Encode("OAuth token endpoint failure: Status: BadRequest;Headers: ;Body: {\"Error\":\"Error\"};"),
+                Assert.Equal("/error?FailureMessage=" + UrlEncoder.Default.Encode("OAuth token endpoint failure: Status: BadRequest;Headers: ;Body: {\"Error\":\"Error\"};"),
                     transaction.Response.Headers.GetValues("Location").First());
             }
             else
@@ -427,30 +423,27 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task ReplyPathWillRejectIfAccessTokenIsMissing(bool redirect)
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
                         return ReturnJsonResponse(new object());
                     }
-                };
-                if (redirect)
+                },
+                Events = redirect ? new OAuthEvents()
                 {
-                    options.Events = new OAuthEvents()
+                    OnRemoteFailure = ctx =>
                     {
-                        OnRemoteError = ctx =>
-                        {
-                            ctx.Response.Redirect("/error?ErrorMessage=" + UrlEncoder.Default.Encode(ctx.Error.Message));
-                            ctx.HandleResponse();
-                            return Task.FromResult(0);
-                        }
-                    };
-                }
+                        ctx.Response.Redirect("/error?FailureMessage=" + UrlEncoder.Default.Encode(ctx.Failure.Message));
+                        ctx.HandleResponse();
+                        return Task.FromResult(0);
+                    }
+                } : new OAuthEvents()
             });
             var properties = new AuthenticationProperties();
             var correlationKey = ".AspNet.Correlation.Google";
@@ -465,7 +458,7 @@ namespace Microsoft.AspNet.Authentication.Google
             {
                 var transaction = await sendTask;
                 Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
-                Assert.Equal("/error?ErrorMessage=" + UrlEncoder.Default.Encode("Failed to retrieve access token."),
+                Assert.Equal("/error?FailureMessage=" + UrlEncoder.Default.Encode("Failed to retrieve access token."),
                     transaction.Response.Headers.GetValues("Location").First());
             }
             else
@@ -479,16 +472,16 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task AuthenticatedEventCanGetRefreshToken()
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
-                        if (req.RequestUri.AbsoluteUri == "https://accounts.google.com/o/oauth2/token")
+                        if (req.RequestUri.AbsoluteUri == "https://www.googleapis.com/oauth2/v3/token")
                         {
                             return ReturnJsonResponse(new
                             {
@@ -521,18 +514,18 @@ namespace Microsoft.AspNet.Authentication.Google
                             });
                         }
 
-                        return null;
+                        throw new NotImplementedException(req.RequestUri.AbsoluteUri);
                     }
-                };
-                options.Events = new OAuthEvents
+                },
+                Events = new OAuthEvents
                 {
                     OnCreatingTicket = context =>
                     {
                         var refreshToken = context.RefreshToken;
-                        context.Principal.AddIdentity(new ClaimsIdentity(new Claim[] { new Claim("RefreshToken", refreshToken, ClaimValueTypes.String, "Google") }, "Google"));
+                        context.Ticket.Principal.AddIdentity(new ClaimsIdentity(new Claim[] { new Claim("RefreshToken", refreshToken, ClaimValueTypes.String, "Google") }, "Google"));
                         return Task.FromResult(0);
                     }
-                };
+                }
             });
             var properties = new AuthenticationProperties();
             var correlationKey = ".AspNet.Correlation.Google";
@@ -559,16 +552,16 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task NullRedirectUriWillRedirectToSlash()
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
-                        if (req.RequestUri.AbsoluteUri == "https://accounts.google.com/o/oauth2/token")
+                        if (req.RequestUri.AbsoluteUri == "https://www.googleapis.com/oauth2/v3/token")
                         {
                             return ReturnJsonResponse(new
                             {
@@ -601,17 +594,17 @@ namespace Microsoft.AspNet.Authentication.Google
                             });
                         }
 
-                        return null;
+                        throw new NotImplementedException(req.RequestUri.AbsoluteUri);
                     }
-                };
-                options.Events = new OAuthEvents
+                },
+                Events = new OAuthEvents
                 {
                     OnTicketReceived = context =>
                     {
-                        context.AuthenticationTicket.Properties.RedirectUri = null;
+                        context.Ticket.Properties.RedirectUri = null;
                         return Task.FromResult(0);
                     }
-                };
+                }
             });
             var properties = new AuthenticationProperties();
             var correlationKey = ".AspNet.Correlation.Google";
@@ -632,13 +625,13 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task ValidateAuthenticatedContext()
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.StateDataFormat = stateFormat;
-                options.AccessType = "offline";
-                options.Events = new OAuthEvents()
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                StateDataFormat = stateFormat,
+                AccessType = "offline",
+                Events = new OAuthEvents()
                 {
                     OnCreatingTicket = context =>
                     {
@@ -653,12 +646,12 @@ namespace Microsoft.AspNet.Authentication.Google
                         Assert.Equal(GoogleHelper.GetGivenName(context.User), "Test Given Name");
                         return Task.FromResult(0);
                     }
-                };
-                options.BackchannelHttpHandler = new TestHttpMessageHandler
+                },
+                BackchannelHttpHandler = new TestHttpMessageHandler
                 {
                     Sender = req =>
                     {
-                        if (req.RequestUri.AbsoluteUri == "https://accounts.google.com/o/oauth2/token")
+                        if (req.RequestUri.AbsoluteUri == "https://www.googleapis.com/oauth2/v3/token")
                         {
                             return ReturnJsonResponse(new
                             {
@@ -691,9 +684,9 @@ namespace Microsoft.AspNet.Authentication.Google
                             });
                         }
 
-                        return null;
+                        throw new NotImplementedException(req.RequestUri.AbsoluteUri);
                     }
-                };
+                }
             });
 
             var properties = new AuthenticationProperties();
@@ -715,10 +708,10 @@ namespace Microsoft.AspNet.Authentication.Google
         [Fact]
         public async Task NoStateCausesException()
         {
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret"
             });
 
             //Post a message to the Google middleware
@@ -730,19 +723,19 @@ namespace Microsoft.AspNet.Authentication.Google
         public async Task CanRedirectOnError()
         {
             var stateFormat = new PropertiesDataFormat(new EphemeralDataProtectionProvider().CreateProtector("GoogleTest"));
-            var server = CreateServer(options =>
+            var server = CreateServer(new GoogleOptions
             {
-                options.ClientId = "Test Id";
-                options.ClientSecret = "Test Secret";
-                options.Events = new OAuthEvents()
+                ClientId = "Test Id",
+                ClientSecret = "Test Secret",
+                Events = new OAuthEvents()
                 {
-                    OnRemoteError = ctx =>
+                    OnRemoteFailure = ctx =>
                     {
-                        ctx.Response.Redirect("/error?ErrorMessage=" + UrlEncoder.Default.Encode(ctx.Error.Message));
+                        ctx.Response.Redirect("/error?FailureMessage=" + UrlEncoder.Default.Encode(ctx.Failure.Message));
                         ctx.HandleResponse();
                         return Task.FromResult(0);
                     }
-                };
+                }
             });
 
             //Post a message to the Google middleware
@@ -750,7 +743,7 @@ namespace Microsoft.AspNet.Authentication.Google
                 "https://example.com/signin-google?code=TestCode");
 
             Assert.Equal(HttpStatusCode.Redirect, transaction.Response.StatusCode);
-            Assert.Equal("/error?ErrorMessage=" + UrlEncoder.Default.Encode("The oauth state was missing or invalid."),
+            Assert.Equal("/error?FailureMessage=" + UrlEncoder.Default.Encode("The oauth state was missing or invalid."),
                 transaction.Response.Headers.GetValues("Location").First());
         }
 
@@ -762,76 +755,78 @@ namespace Microsoft.AspNet.Authentication.Google
             return res;
         }
 
-        private static TestServer CreateServer(Action<GoogleOptions> configureOptions, Func<HttpContext, Task> testpath = null)
+        private static TestServer CreateServer(GoogleOptions options, Func<HttpContext, Task> testpath = null)
         {
-            return TestServer.Create(app =>
-            {
-                app.UseCookieAuthentication(options =>
+            var builder = new WebApplicationBuilder()
+                .Configure(app =>
                 {
-                    options.AuthenticationScheme = TestExtensions.CookieAuthenticationScheme;
-                    options.AutomaticAuthenticate = true;
-                });
-                app.UseGoogleAuthentication(configureOptions);
-                app.UseClaimsTransformation(p =>
+                    app.UseCookieAuthentication(new CookieAuthenticationOptions
+                    {
+                        AuthenticationScheme = TestExtensions.CookieAuthenticationScheme,
+                        AutomaticAuthenticate = true
+                    });
+                    app.UseGoogleAuthentication(options);
+                    app.UseClaimsTransformation(p =>
+                    {
+                        var id = new ClaimsIdentity("xform");
+                        id.AddClaim(new Claim("xform", "yup"));
+                        p.AddIdentity(id);
+                        return Task.FromResult(p);
+                    });
+                    app.Use(async (context, next) =>
+                    {
+                        var req = context.Request;
+                        var res = context.Response;
+                        if (req.Path == new PathString("/challenge"))
+                        {
+                            await context.Authentication.ChallengeAsync("Google");
+                        }
+                        else if (req.Path == new PathString("/me"))
+                        {
+                            res.Describe(context.User);
+                        }
+                        else if (req.Path == new PathString("/unauthorized"))
+                        {
+                            // Simulate Authorization failure 
+                            var result = await context.Authentication.AuthenticateAsync("Google");
+                            await context.Authentication.ChallengeAsync("Google");
+                        }
+                        else if (req.Path == new PathString("/unauthorizedAuto"))
+                        {
+                            var result = await context.Authentication.AuthenticateAsync("Google");
+                            await context.Authentication.ChallengeAsync();
+                        }
+                        else if (req.Path == new PathString("/401"))
+                        {
+                            res.StatusCode = 401;
+                        }
+                        else if (req.Path == new PathString("/signIn"))
+                        {
+                            await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.SignInAsync("Google", new ClaimsPrincipal()));
+                        }
+                        else if (req.Path == new PathString("/signOut"))
+                        {
+                            await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.SignOutAsync("Google"));
+                        }
+                        else if (req.Path == new PathString("/forbid"))
+                        {
+                            await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.ForbidAsync("Google"));
+                        }
+                        else if (testpath != null)
+                        {
+                            await testpath(context);
+                        }
+                        else
+                        {
+                            await next();
+                        }
+                    });
+                })
+                .ConfigureServices(services =>
                 {
-                    var id = new ClaimsIdentity("xform");
-                    id.AddClaim(new Claim("xform", "yup"));
-                    p.AddIdentity(id);
-                    return Task.FromResult(p);
+                    services.AddAuthentication(authOptions => authOptions.SignInScheme = TestExtensions.CookieAuthenticationScheme);
                 });
-                app.Use(async (context, next) =>
-                {
-                    var req = context.Request;
-                    var res = context.Response;
-                    if (req.Path == new PathString("/challenge"))
-                    {
-                        await context.Authentication.ChallengeAsync("Google");
-                    }
-                    else if (req.Path == new PathString("/me"))
-                    {
-                        res.Describe(context.User);
-                    }
-                    else if (req.Path == new PathString("/unauthorized"))
-                    {
-                        // Simulate Authorization failure 
-                        var result = await context.Authentication.AuthenticateAsync("Google");
-                        await context.Authentication.ChallengeAsync("Google");
-                    }
-                    else if (req.Path == new PathString("/unauthorizedAuto"))
-                    {
-                        var result = await context.Authentication.AuthenticateAsync("Google");
-                        await context.Authentication.ChallengeAsync();
-                    }
-                    else if (req.Path == new PathString("/401"))
-                    {
-                        res.StatusCode = 401;
-                    }
-                    else if (req.Path == new PathString("/signIn"))
-                    {
-                        await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.SignInAsync("Google", new ClaimsPrincipal()));
-                    }
-                    else if (req.Path == new PathString("/signOut"))
-                    {
-                        await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.SignOutAsync("Google"));
-                    }
-                    else if (req.Path == new PathString("/forbid"))
-                    {
-                        await Assert.ThrowsAsync<NotSupportedException>(() => context.Authentication.ForbidAsync("Google"));
-                    }
-                    else if (testpath != null)
-                    {
-                        await testpath(context);
-                    }
-                    else
-                    {
-                        await next();
-                    }
-                });
-            },
-            services =>
-            {
-                services.AddAuthentication(options => options.SignInScheme = TestExtensions.CookieAuthenticationScheme);
-            });
+            return new TestServer(builder);
         }
     }
 }

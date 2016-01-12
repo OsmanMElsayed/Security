@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Authentication.OAuth;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http.Authentication;
 using Newtonsoft.Json.Linq;
 
@@ -27,13 +28,9 @@ namespace Microsoft.AspNet.Authentication.MicrosoftAccount
             response.EnsureSuccessStatusCode();
 
             var payload = JObject.Parse(await response.Content.ReadAsStringAsync());
-            
-            var context = new OAuthCreatingTicketContext(Context, Options, Backchannel, tokens, payload)
-            {
-                Properties = properties,
-                Principal = new ClaimsPrincipal(identity)
-            };
 
+            var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, Options.AuthenticationScheme);
+            var context = new OAuthCreatingTicketContext(ticket, Context, Options, Backchannel, tokens, payload);
             var identifier = MicrosoftAccountHelper.GetId(payload);
             if (!string.IsNullOrEmpty(identifier))
             {
@@ -55,8 +52,7 @@ namespace Microsoft.AspNet.Authentication.MicrosoftAccount
             }
 
             await Options.Events.CreatingTicket(context);
-
-            return new AuthenticationTicket(context.Principal, context.Properties, context.Options.AuthenticationScheme);
+            return context.Ticket;
         }
     }
 }

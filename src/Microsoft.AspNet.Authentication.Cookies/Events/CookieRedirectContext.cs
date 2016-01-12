@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
+using Microsoft.AspNet.Http.Authentication;
 
 namespace Microsoft.AspNet.Authentication.Cookies
 {
@@ -18,10 +20,11 @@ namespace Microsoft.AspNet.Authentication.Cookies
         /// <param name="options">The cookie middleware options</param>
         /// <param name="redirectUri">The initial redirect URI</param>
         [SuppressMessage("Microsoft.Design", "CA1054:UriParametersShouldNotBeStrings", MessageId = "2#", Justification = "Represents header value")]
-        public CookieRedirectContext(HttpContext context, CookieAuthenticationOptions options, string redirectUri)
+        public CookieRedirectContext(HttpContext context, CookieAuthenticationOptions options, string redirectUri, AuthenticationProperties properties)
             : base(context, options)
         {
             RedirectUri = redirectUri;
+            Properties = properties;
         }
 
         /// <summary>
@@ -29,5 +32,7 @@ namespace Microsoft.AspNet.Authentication.Cookies
         /// </summary>
         [SuppressMessage("Microsoft.Design", "CA1056:UriPropertiesShouldNotBeStrings", Justification = "Represents header value")]
         public string RedirectUri { get; set; }
+
+        public AuthenticationProperties Properties { get; }
     }
 }

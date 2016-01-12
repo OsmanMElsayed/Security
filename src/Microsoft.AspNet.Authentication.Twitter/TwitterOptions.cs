@@ -2,10 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Net.Http;
+using Microsoft.AspNet.Authentication;
+using Microsoft.AspNet.Authentication.Twitter;
 using Microsoft.AspNet.Http;
 
-namespace Microsoft.AspNet.Authentication.Twitter
+namespace Microsoft.AspNet.Builder
 {
     /// <summary>
     /// Options for the Twitter authentication middleware.
@@ -49,13 +50,5 @@ namespace Microsoft.AspNet.Authentication.Twitter
             get { return (ITwitterEvents)base.Events; }
             set { base.Events = value; }
         }
-
-        /// <summary>
-        /// Defines whether access tokens should be stored in the
-        /// <see cref="ClaimsPrincipal"/> after a successful authentication.
-        /// This property is set to <c>false</c> by default to reduce
-        /// the size of the final authentication cookie.
-        /// </summary>
-        public bool SaveTokensAsClaims { get; set; }
     }
 }

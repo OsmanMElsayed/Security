@@ -4,6 +4,7 @@
 using System;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 using Microsoft.AspNet.Http.Features.Authentication;
@@ -100,11 +101,15 @@ namespace Microsoft.AspNet.Authentication
             if (ShouldHandleScheme(AuthenticationManager.AutomaticScheme, Options.AutomaticAuthenticate))
             {
                 var result = await HandleAuthenticateOnceAsync();
+                if (result.Failure != null)
+                {
+                    Logger.LogInformation(0, $"{Options.AuthenticationScheme} not authenticated: " + result.Failure.Message);
+                }
                 var ticket = result?.Ticket;
                 if (ticket?.Principal != null)
                 {
                     Context.User = SecurityHelper.MergeUserPrincipal(Context.User, ticket.Principal);
-                    Logger.LogInformation(0, "HttContext.User merged via AutomaticAuthentication from authenticationScheme: {scheme}.", Options.AuthenticationScheme);
+                    Logger.LogInformation(0, "HttpContext.User merged via AutomaticAuthentication from authenticationScheme: {scheme}.", Options.AuthenticationScheme);
                 }
             }
         }
@@ -200,9 +205,9 @@ namespace Microsoft.AspNet.Authentication
                 // Calling Authenticate more than once should always return the original value. 
                 var result = await HandleAuthenticateOnceAsync();
 
-                if (result?.Error != null)
+                if (result?.Failure != null)
                 {
-                    context.Failed(result.Error);
+                    context.Failed(result.Failure);
                 }
                 else
                 {
@@ -216,7 +221,7 @@ namespace Microsoft.AspNet.Authentication
                     else
                     {
                         context.NotAuthenticated();
-                        Logger.LogVerbose(2, "AuthenticationScheme: {scheme} was not authenticated.", Options.AuthenticationScheme);
+                        Logger.LogDebug(2, "AuthenticationScheme: {scheme} was not authenticated.", Options.AuthenticationScheme);
                     }
                 }
             }

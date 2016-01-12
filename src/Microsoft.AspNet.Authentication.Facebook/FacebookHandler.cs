@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Globalization;
 using System.Net.Http;
 using System.Security.Claims;
@@ -9,9 +8,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Authentication.OAuth;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http.Authentication;
-using Microsoft.AspNet.Http.Extensions;
-using Microsoft.AspNet.Http.Internal;
 using Microsoft.AspNet.WebUtilities;
 using Newtonsoft.Json.Linq;
 
@@ -24,31 +22,6 @@ namespace Microsoft.AspNet.Authentication.Facebook
         {
         }
 
-        protected override async Task<OAuthTokenResponse> ExchangeCodeAsync(string code, string redirectUri)
-        {
-            var queryBuilder = new QueryBuilder()
-            {
-                { "grant_type", "authorization_code" },
-                { "code", code },
-                { "redirect_uri", redirectUri },
-                { "client_id", Options.AppId },
-                { "client_secret", Options.AppSecret },
-            };
-
-            var response = await Backchannel.GetAsync(Options.TokenEndpoint + queryBuilder.ToString(), Context.RequestAborted);
-            response.EnsureSuccessStatusCode();
-
-            var form = new FormCollection(FormReader.ReadForm(await response.Content.ReadAsStringAsync()));
-            var payload = new JObject();
-            foreach (string key in form.Keys)
-            {
-                payload.Add(string.Equals(key, "expires", StringComparison.OrdinalIgnoreCase) ? "expires_in" : key, (string)form[key]);
-            }
-
-            // The refresh token is not available.
-            return OAuthTokenResponse.Success(payload);
-        }
-
         protected override async Task<AuthenticationTicket> CreateTicketAsync(ClaimsIdentity identity, AuthenticationProperties properties, OAuthTokenResponse tokens)
         {
             var endpoint = QueryHelpers.AddQueryString(Options.UserInformationEndpoint, "access_token", tokens.AccessToken);
@@ -56,17 +29,18 @@ namespace Microsoft.AspNet.Authentication.Facebook
             {
                 endpoint = QueryHelpers.AddQueryString(endpoint, "appsecret_proof", GenerateAppSecretProof(tokens.AccessToken));
             }
+            if (Options.Fields.Count > 0)
+            {
+                endpoint = QueryHelpers.AddQueryString(endpoint, "fields", string.Join(",", Options.Fields));
+            }
 
             var response = await Backchannel.GetAsync(endpoint, Context.RequestAborted);
             response.EnsureSuccessStatusCode();
 
             var payload = JObject.Parse(await response.Content.ReadAsStringAsync());
-            
-            var context = new OAuthCreatingTicketContext(Context, Options, Backchannel, tokens, payload)
-            {
-                Properties = properties,
-                Principal = new ClaimsPrincipal(identity)
-            };
+
+            var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), properties, Options.AuthenticationScheme);
+            var context = new OAuthCreatingTicketContext(ticket, Context, Options, Backchannel, tokens, payload);
 
             var identifier = FacebookHelper.GetId(payload);
             if (!string.IsNullOrEmpty(identifier))
@@ -106,7 +80,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
 
             await Options.Events.CreatingTicket(context);
 
-            return new AuthenticationTicket(context.Principal, context.Properties, context.Options.AuthenticationScheme);
+            return context.Ticket;
         }
 
         private string GenerateAppSecretProof(string accessToken)

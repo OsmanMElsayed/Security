@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Security.Claims;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.Http;
 using Microsoft.AspNet.Http.Authentication;
 
@@ -36,16 +37,16 @@ namespace Microsoft.AspNet.Authentication.Cookies
         /// <summary>
         /// The name of the AuthenticationScheme creating a cookie
         /// </summary>
-        public string AuthenticationScheme { get; private set; }
+        public string AuthenticationScheme { get; }
 
         /// <summary>
         /// Contains the claims that were converted into the outgoing cookie.
         /// </summary>
-        public ClaimsPrincipal Principal { get; private set; }
+        public ClaimsPrincipal Principal { get; }
 
         /// <summary>
         /// Contains the extra data that was contained in the outgoing cookie.
         /// </summary>
-        public AuthenticationProperties Properties { get; private set; }
+        public AuthenticationProperties Properties { get; }
     }
 }

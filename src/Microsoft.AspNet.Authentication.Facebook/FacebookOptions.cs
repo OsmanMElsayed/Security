@@ -1,10 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
+using Microsoft.AspNet.Authentication.Facebook;
 using Microsoft.AspNet.Http;
-using Microsoft.AspNet.Authentication.OAuth;
 
-namespace Microsoft.AspNet.Authentication.Facebook
+namespace Microsoft.AspNet.Builder
 {
     /// <summary>
     /// Configuration options for <see cref="FacebookMiddleware"/>.
@@ -23,7 +24,7 @@ namespace Microsoft.AspNet.Authentication.Facebook
             AuthorizationEndpoint = FacebookDefaults.AuthorizationEndpoint;
             TokenEndpoint = FacebookDefaults.TokenEndpoint;
             UserInformationEndpoint = FacebookDefaults.UserInformationEndpoint;
-            SaveTokensAsClaims = false;
+            Fields = new List<string>();
         }
 
         // Facebook uses a non-standard term for this field.
@@ -51,5 +52,11 @@ namespace Microsoft.AspNet.Authentication.Facebook
         /// This is enabled by default.
         /// </summary>
         public bool SendAppSecretProof { get; set; }
+
+        /// <summary>
+        /// The list of fields to retrieve from the UserInformationEndpoint.
+        /// https://developers.facebook.com/docs/graph-api/reference/user
+        /// </summary>
+        public IList<string> Fields { get; }
     }
 }

@@ -4,10 +4,11 @@
 using System;
 using System.Text.Encodings.Web;
 using Microsoft.AspNet.Authentication.OAuth;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.DataProtection;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.OptionsModel;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNet.Authentication.MicrosoftAccount
 {
@@ -32,7 +33,7 @@ namespace Microsoft.AspNet.Authentication.MicrosoftAccount
             ILoggerFactory loggerFactory,
             UrlEncoder encoder,
             IOptions<SharedAuthenticationOptions> sharedOptions,
-            MicrosoftAccountOptions options)
+            IOptions<MicrosoftAccountOptions> options)
             : base(next, dataProtectionProvider, loggerFactory, encoder, sharedOptions, options)
         {
             if (next == null)

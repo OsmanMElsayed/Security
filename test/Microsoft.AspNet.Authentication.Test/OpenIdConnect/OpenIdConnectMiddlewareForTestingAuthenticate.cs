@@ -4,10 +4,11 @@
 using System;
 using System.Text.Encodings.Web;
 using Microsoft.AspNet.Authentication.OpenIdConnect;
+using Microsoft.AspNet.Builder;
 using Microsoft.AspNet.DataProtection;
 using Microsoft.AspNet.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.OptionsModel;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.AspNet.Authentication.Tests.OpenIdConnect
 {
@@ -27,7 +28,7 @@ namespace Microsoft.AspNet.Authentication.Tests.OpenIdConnect
             UrlEncoder encoder,
             IServiceProvider services,
             IOptions<SharedAuthenticationOptions> sharedOptions,
-            OpenIdConnectOptions options,
+            IOptions<OpenIdConnectOptions> options,
             HtmlEncoder htmlEncoder,
             OpenIdConnectHandler handler = null
             )
