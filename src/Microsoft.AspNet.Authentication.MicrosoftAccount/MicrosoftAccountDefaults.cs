@@ -7,10 +7,10 @@ namespace Microsoft.AspNet.Authentication.MicrosoftAccount
     {
         public const string AuthenticationScheme = "Microsoft";
 
-        public static readonly string AuthorizationEndpoint = "https://login.live.com/oauth20_authorize.srf";
+        public static readonly string AuthorizationEndpoint = "https://login.microsoftonline.com/common/oauth2/authorize";
 
-        public static readonly string TokenEndpoint = "https://login.live.com/oauth20_token.srf";
+        public static readonly string TokenEndpoint = "https://login.microsoftonline.com/common/oauth2/token";
 
-        public static readonly string UserInformationEndpoint = "https://apis.live.net/v5.0/me";
+        public static readonly string UserInformationEndpoint = "https://graph.microsoft.com/v1.0/me";
     }
 }

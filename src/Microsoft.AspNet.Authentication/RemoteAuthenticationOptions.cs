@@ -11,7 +11,7 @@ namespace Microsoft.AspNet.Builder
     public class RemoteAuthenticationOptions : AuthenticationOptions
     {
         /// <summary>
-        /// Gets or sets timeout value in milliseconds for back channel communications with Twitter.
+        /// Gets or sets timeout value in milliseconds for back channel communications.
         /// </summary>
         /// <value>
         /// The back channel timeout.
@@ -19,7 +19,7 @@ namespace Microsoft.AspNet.Builder
         public TimeSpan BackchannelTimeout { get; set; } = TimeSpan.FromSeconds(60);
 
         /// <summary>
-        /// The HttpMessageHandler used to communicate with Twitter.
+        /// The HttpMessageHandler used to communicate with the external login provider.
         /// This cannot be set at the same time as BackchannelCertificateValidator unless the value 
         /// can be downcast to a WebRequestHandler.
         /// </summary>
